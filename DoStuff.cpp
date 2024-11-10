@@ -25,6 +25,9 @@
 #include "CommandRunner.h"
 #include "CommandInCommand.h"
 
+
+#include <QCoreApplication>
+
 DoStuff::DoStuff()
 :QObject()
 {
@@ -44,5 +47,7 @@ void DoStuff::startWork()
 
    CommandInCommand cic("NestedCommand");
    runner.run(&cic, CommandRunner::Mode::SyncThread);
+
+   QCoreApplication::instance()->quit();
 }
 
