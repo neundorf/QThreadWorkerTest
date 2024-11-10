@@ -30,7 +30,6 @@
 
 QThread* CommandRunner::s_workerThread = nullptr;
 CommandThreadWorker* CommandRunner::s_worker = nullptr;
-QEvent::Type CommandRunner::s_commandFinishedEventType = QEvent::MaxUser;
 
 
 CommandThreadWorker::CommandThreadWorker(QObject* _parent)
@@ -39,11 +38,10 @@ CommandThreadWorker::CommandThreadWorker(QObject* _parent)
 }
 
 
-void CommandThreadWorker::runCommand(Command* _cmd, CommandRunner* _caller)
+void CommandThreadWorker::runCommand(Command* _cmd)
 {
    _cmd->exec();
-   QEvent* finishedEvent = new QEvent(_caller->getCommandFinishedEventType());
-   QCoreApplication::instance()->postEvent(_caller, finishedEvent);
+   emit commandFinished();
 }
 
 
@@ -58,9 +56,6 @@ CommandRunner::CommandRunner(QObject* _parent)
       s_workerThread->start();
       s_worker = new CommandThreadWorker();
       s_worker->moveToThread(s_workerThread);
-
-      s_commandFinishedEventType = static_cast<QEvent::Type>(QEvent::registerEventType());
-      fmt::print("event is {0}\n", (int)s_commandFinishedEventType);
    }
    connect(this, &CommandRunner::runCommandRequested, s_worker, &CommandThreadWorker::runCommand);
 }
@@ -89,24 +84,12 @@ void CommandRunner::run(Command* _cmd, Mode _mode)
          else
          {
             fmt::print("run: running in other thread\n");
-            emit runCommandRequested(_cmd, this);
+            connect(s_worker, &CommandThreadWorker::commandFinished, m_localEventLoop, &QEventLoop::quit);
+            emit runCommandRequested(_cmd);
             m_localEventLoop->exec();
+            disconnect(s_worker, &CommandThreadWorker::commandFinished, m_localEventLoop, &QEventLoop::quit);
             fmt::print("run: running in other thread done\n");
          }
          break;
    }
 }
-
-
-bool CommandRunner::event(QEvent* _event)
-{
-   if (_event->type() == s_commandFinishedEventType)
-   {
-      fmt::print("received finished event\n");
-      m_localEventLoop->exit();
-      return true;
-   }
-
-   return QObject::event(_event);
-}
-

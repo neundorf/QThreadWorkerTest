@@ -38,7 +38,10 @@ class CommandThreadWorker : public QObject
       CommandThreadWorker(QObject* _parent = nullptr);
 
    public slots:
-      void runCommand(Command* _cmd, CommandRunner* _caller);
+      void runCommand(Command* _cmd);
+
+   signals:
+      void commandFinished();
 
 };
 
@@ -56,17 +59,12 @@ class CommandRunner : public QObject
 
       void run(Command* _cmd, Mode _mode);
 
-      bool event(QEvent* _event) override;
-
-      QEvent::Type getCommandFinishedEventType() const { return s_commandFinishedEventType; }
-
    signals:
-      void runCommandRequested(Command* _cmd, CommandRunner* _caller);
+      void runCommandRequested(Command* _cmd);
 
    protected:
       QEventLoop* m_localEventLoop = nullptr;
 
       static QThread* s_workerThread;
       static CommandThreadWorker* s_worker;
-      static QEvent::Type s_commandFinishedEventType;
 };
